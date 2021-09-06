@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Validator;
 
 class JWTAuthController extends Controller
 {
@@ -23,15 +22,28 @@ class JWTAuthController extends Controller
      */
     public function register(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|unique:users|max:50',
-            'password' => 'required|string|min:6',
-        ]);
+        // dd($request->username);
+        // $validator = Validator::make($request->all(), [
+        //     'email' => 'required|email',
+        //     'password' => 'required|string|min:6',
+        // ]);
 
-        $user = User::create(array_merge(
-            $validator->validated(),
-            ['password' => bcrypt($request->password)]
-        ));
+        // $user = User::create(array_merge(
+        //     $validator->validated(),
+        //     ['password' => bcrypt($request->password)]
+        // ));
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => bcrypt($request->password),
+            'username' => $request->username,
+            'phone' => $request->phone,
+            'country' => $request->country,
+            'city' => $request->city,
+            'postcode' => $request->postcode,
+            'address' => $request->address,
+        ]);
 
         return response()->json([
             'message' => 'Successfully registered',
