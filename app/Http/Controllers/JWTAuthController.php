@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\FetchDataEvent;
-use App\Events\PushDataEvent;
 use App\Http\Controllers\Controller;
-use App\Models\Withdraw;
 use App\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,10 +24,8 @@ class JWTAuthController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|between:2,100',
             'email' => 'required|email|unique:users|max:50',
             'password' => 'required|string|min:6',
-            'role_id' => 'required',
         ]);
 
         $user = User::create(array_merge(
@@ -51,19 +46,7 @@ class JWTAuthController extends Controller
      */
     public function login(Request $request)
     {
-        // $validator = Validator::make($request->all(), [
-        //     'email' => 'required|email',
-        //     'password' => 'required|string|min:6',
-        // ]);
-
-        // if ($validator->fails()) {
-        //     return response()->json($validator->errors(), 422);
-        // }
-
-        // if (!$token = auth()->attempt($validator->validated())) {
-        //     return response()->json(['error' => 'Unauthorized'], 401);
-        // }
-        $credentials = $request->only('email', 'password', 'role_id');
+        $credentials = $request->only('email', 'password');
         if (!$token = auth()->attempt($credentials)) {
             return $this->respondNotAuthorised();
         }
@@ -119,81 +102,15 @@ class JWTAuthController extends Controller
             'expires_in' => auth()->factory()->getTTL() * 60,
         ]);
     }
-// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    public function fetchPoint()
+
+    public function getUsers()
     {
-        $point = User::select('saldo', 'point')->where('id', Auth::user()->id)->first();
+        $users = User::all();
 
         return response()->json([
-            'point' => $point,
+            'data' => $users,
+            'message' => 'Successfully get Data',
         ]);
     }
 
-    public function fetchWithdraw()
-    {
-        $withdraw = Withdraw::where('user_id', Auth::user()->id)->orderBy('created_at', 'desc')->with('user')->get();
-
-        return response()->json([
-            'withdraw' => $withdraw,
-        ]);
-    }
-
-    public function fetchWithdraws()
-    {
-        $withdraw = Withdraw::where('status', 0)->orderBy('created_at', 'asc')->with('user')->get();
-
-        return response()->json([
-            'withdraws' => $withdraw,
-        ]);
-    }
-
-    public function confirm(Request $request)
-    {
-        $saldo = $request->point / 10;
-        $saldoAwal = User::where('id', $request->id_user)->pluck('saldo')->first();
-        $saldoFinal = $saldoAwal + $saldo;
-        $check = User::where('id', $request->id_user)->update(['saldo' => $saldoFinal]);
-
-        if ($check) {
-            Withdraw::where('id', $request->id)->update(['status' => 1]);
-            event(new PushDataEvent("Point telah dikonfirmasi silahkan Cek Saldo dan Histori Penukaran"));
-            return response()->json([
-                'status' => true,
-            ]);
-        }
-
-    }
-
-    public function reject(Request $request)
-    {
-        Withdraw::where('id', $request->id)->update(['status' => 2]);
-        event(new PushDataEvent("Point telah dikonfirmasi silahkan Cek Saldo dan Histori Penukaran"));
-        return response()->json([
-            'status' => true,
-        ]);
-    }
-
-    public function point(Request $request)
-    {
-        // dd($request->point);
-        $point = User::where('id', Auth::user()->id)->update(['point' => $request->point]);
-
-        return response()->json([
-            'point' => $point,
-        ]);
-    }
-
-    public function tukar(Request $request)
-    {
-        $name = User::where('id', Auth::user()->id)->pluck('name')->first();
-        $point = User::where('id', Auth::user()->id)->pluck('point')->first();
-        $pointFinal = $point - $request->point;
-        $tukar = Withdraw::create(['user_id' => Auth::user()->id, 'num_point' => $request->point, 'status' => 0]);
-        User::where('id', Auth::user()->id)->update(['point' => $pointFinal]);
-        event(new FetchDataEvent($name));
-
-        return response()->json([
-            'point' => $tukar,
-        ]);
-    }
 }
